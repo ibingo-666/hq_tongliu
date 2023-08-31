@@ -166,7 +166,7 @@ int ClassTongliu::getBeBladeData()
 		//末三级选型
 		becCurrentCell = bewCurrentSheet->Cell(0,15);
 		if(isCellString(becCurrentCell,LastThreeStages_str))
-			aircylinderTmp.LastThreeStages = LastThreeStages_str;
+			aircylinderTmp.StagesType = LastThreeStages_str;
 
 		//p0Jz_1
 		becCurrentCell = bewCurrentSheet->Cell(4,2);
@@ -194,6 +194,12 @@ int ClassTongliu::getBeBladeData()
 			bladeData blade_tmp;
 			double thNum =0.0;
 
+			//InletWeight 进气侧轴向宽度，非空
+			blade_tmp.InletWeight = aircylinderTmp.CantileverWidth;
+		
+			//OutletWeight 出气侧轴向宽度，非空
+			blade_tmp.OutletWeight = aircylinderTmp.CantileverWidth;
+		
 			becCurrentCell = bewCurrentSheet->Cell(0,1);
 			if(isCellDouble( becCurrentCell,thNum))
 				blade_tmp.Margin = thNum;
@@ -226,7 +232,7 @@ int ClassTongliu::getBeBladeData()
 			else
 				continue;
 
-			//N
+			//Nn -> Sn
 			becCurrentCell = bewCurrentSheet->Cell(i,39);
 			if(isCellDouble( becCurrentCell,thNum))
 				blade_tmp.N = thNum;
@@ -377,7 +383,8 @@ int ClassTongliu::getBeBladeData()
 				blade_tmp.p27Lp = thNum;
 			else
 				continue;
-
+			
+			//p31zf -》Tn
 			becCurrentCell = bewCurrentSheet->Cell(i,34);
 			if(isCellDouble( becCurrentCell,thNum))
 			{
@@ -509,43 +516,29 @@ int ClassTongliu::getBeBladeData()
 			else
 				continue;
 
-			//InletWeight 进气侧轴向宽度，非空
-			becCurrentCell = bewCurrentSheet->Cell(i,47);
-			if(isCellDouble( becCurrentCell,thNum))
-				blade_tmp.InletWeight = thNum;
-			else
-				continue;
-
-			//OutletWeight 出气侧轴向宽度，非空
-			becCurrentCell = bewCurrentSheet->Cell(i,48);
-			if(isCellDouble( becCurrentCell,thNum))
-				blade_tmp.OutletWeight = thNum;
-			else
-				continue;
-
 			//CoverDegree 动静叶顶盖度，非空
-			becCurrentCell = bewCurrentSheet->Cell(i,49);
+			becCurrentCell = bewCurrentSheet->Cell(i,47);
 			if(isCellDouble( becCurrentCell,thNum))
 				blade_tmp.CoverDegree = thNum;
 			else
 				continue;
 
 			//V 蒸汽比容V，非空
-			becCurrentCell = bewCurrentSheet->Cell(i,50);
+			becCurrentCell = bewCurrentSheet->Cell(i,48);
 			if(isCellDouble( becCurrentCell,thNum))
 				blade_tmp.V = thNum;
 			else
 				continue;
 
 			//G 抽汽流量G，非空
-			becCurrentCell = bewCurrentSheet->Cell(i,51);
+			becCurrentCell = bewCurrentSheet->Cell(i,49);
 			if(isCellDouble( becCurrentCell,thNum))
 				blade_tmp.G = thNum;
 			else
 				continue;
 
 			//最大允许流量MaxAllowFlow，XML 高压低压中压，无
-			becCurrentCell = bewCurrentSheet->Cell(i,52);
+			becCurrentCell = bewCurrentSheet->Cell(i,50);
 			string MaxAllowFlow_str ;
 			if(isCellString( becCurrentCell,MaxAllowFlow_str))
 				blade_tmp.MaxAllowFlow = MaxAllowFlow_str;
@@ -553,12 +546,18 @@ int ClassTongliu::getBeBladeData()
 				continue;
 
 			//抽口中间轴向宽度Y
-			becCurrentCell = bewCurrentSheet->Cell(i,53);
+			becCurrentCell = bewCurrentSheet->Cell(i,51);
 			if(isCellDouble( becCurrentCell,thNum))
 				blade_tmp.MidY = thNum;
 			else
 				continue;
 
+			//尺寸链下偏差
+			becCurrentCell = bewCurrentSheet->Cell(i,52);
+			if(isCellDouble( becCurrentCell,thNum))
+				blade_tmp.DDChainDeviation = thNum;
+			else
+				continue;
 
 
 			bladeDataVec.push_back(blade_tmp);
@@ -688,6 +687,13 @@ bool ClassTongliu::ExportXMLData()
 	TiXmlElement *OriginalPointElement = new TiXmlElement("OriginalPoint");
 	SettingElement->LinkEndChild(OriginalPointElement);
 
+	//ResPath 系统末三级路径 -- 块
+	TiXmlElement *LastThreePathElement = new TiXmlElement("LastThreePath");
+	SettingElement->LinkEndChild(LastThreePathElement);
+	//acedAlert(Data->ResPath);
+	TiXmlText *LastThreePathContent = new TiXmlText(Data->MyFunction->Basic->CString2Char(Data->ResPath));
+	LastThreePathElement->LinkEndChild(LastThreePathContent);
+
 	double firstValue = setting.OriginalPoint.x;
 	double secondValue = setting.OriginalPoint.y;
 	string combinedString;
@@ -714,8 +720,30 @@ bool ClassTongliu::ExportXMLData()
 	//LastThreeStages 末三级选型及定位数据
 	TiXmlElement *LastThreeStageseElement = new TiXmlElement("LastThreeStages");
 	AirCylinderElement->LinkEndChild(LastThreeStageseElement);
-	TiXmlText *LastThreeStageseContent = new TiXmlText(aircylinderTmp.LastThreeStages.c_str());
-	LastThreeStageseElement->LinkEndChild(LastThreeStageseContent);
+
+	//StagesType 末三级选型 MSJ-179-9、MSJ-179-15。MSJ-182-1
+	TiXmlElement *StagesTypeElement = new TiXmlElement("StagesType");
+	LastThreeStageseElement->LinkEndChild(StagesTypeElement);
+	TiXmlText *StagesTypeContent = new TiXmlText(aircylinderTmp.StagesType.c_str());
+	StagesTypeElement->LinkEndChild(StagesTypeContent);
+
+	//BlockLen;		//图块长度，非空
+	TiXmlElement *BlockLenElement = new TiXmlElement("BlockLen");
+	LastThreeStageseElement->LinkEndChild(BlockLenElement);
+	TiXmlText *BlockLenContent = new TiXmlText("50.0");
+	BlockLenElement->LinkEndChild(BlockLenContent);
+
+	//InletH 进气侧径向高度 ，非空
+	TiXmlElement *InletHElement = new TiXmlElement("InletH");
+	LastThreeStageseElement->LinkEndChild(InletHElement);
+	TiXmlText *InletHContent = new TiXmlText("0");
+	InletHElement->LinkEndChild(InletHContent);
+
+	//OutletH 出汽侧径向高度  ，非空
+	TiXmlElement *OutletHElement = new TiXmlElement("OutletH");
+	LastThreeStageseElement->LinkEndChild(OutletHElement);
+	TiXmlText *OutletHContent = new TiXmlText("0");
+	OutletHElement->LinkEndChild(OutletHContent);
 
 	//气道中心
 	TiXmlElement *AirwayCenterElement = new TiXmlElement("AirwayCenter");
@@ -831,12 +859,41 @@ bool ClassTongliu::ExportXMLData( TiXmlElement* pElem,bladeData tmp)
 	TiXmlText *MidYContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.MidY));
 	MidYElement->LinkEndChild(MidYContent);
 
-	//p31zf 汽流方向，定义数值=1，汽流从左向右，否则标其他数字，非空
-	TiXmlElement *p31zfElement = new TiXmlElement("p31zf");
+	//P<!--  正胀差  -->
+	TiXmlElement *PElement = new TiXmlElement("P");
+	BladePairElement->LinkEndChild(PElement);
+	TiXmlText *PContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.P));
+	PElement->LinkEndChild(PContent);
+
+	//Q<!--  负胀差  -->
+	TiXmlElement *QElement = new TiXmlElement("Q");
+	BladePairElement->LinkEndChild(QElement);
+	TiXmlText *QContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.Q));
+	QElement->LinkEndChild(QContent);
+
+	//W<!--  稳态胀差  先取正负涨差的均值  -->
+	TiXmlElement *WElement = new TiXmlElement("W");
+	BladePairElement->LinkEndChild(WElement);
+	TiXmlText *WContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.W));
+	WElement->LinkEndChild(WContent);
+
+	//p31zf 汽流方向，定义数值=1，汽流从左向右，否则标其他数字，非空 p31->T
+	TiXmlElement *p31zfElement = new TiXmlElement("T");
 	BladePairElement->LinkEndChild(p31zfElement);
 	const char * thetmp = Data->MyFunction->Basic->Double2Char(tmp.p31zf);
 	TiXmlText *p31zfContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.p31zf));
 	p31zfElement->LinkEndChild(p31zfContent);
+
+	/*N<!--  每个气道的布置方向与推力轴承的关系Nn值，暂时与P31相同
+	当气道1在推力轴承右侧且为反向布置，或气道1在推力轴承左侧且正向布置，定义：N1=0
+	当气道1在推力轴承右侧且为正向布置，或气道1在推力轴承左侧且反向布置，定义：N1=1
+	-->*/
+	//N->S
+	TiXmlElement *NElement = new TiXmlElement("S");
+	BladePairElement->LinkEndChild(NElement);
+	TiXmlText *NContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.N));
+	NElement->LinkEndChild(NContent);
+
 
 	//折流处标记。1为是0为否
 	TiXmlElement *BrokenElement = new TiXmlElement("Broken");
@@ -872,33 +929,11 @@ bool ClassTongliu::ExportXMLData( TiXmlElement* pElem,bladeData tmp)
 	TiXmlText *HminContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.Hmin));
 	HminElement->LinkEndChild(HminContent);
 
-	//P<!--  正胀差  -->
-	TiXmlElement *PElement = new TiXmlElement("P");
-	BladePairElement->LinkEndChild(PElement);
-	TiXmlText *PContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.P));
-	PElement->LinkEndChild(PContent);
-
-	//Q<!--  负胀差  -->
-	TiXmlElement *QElement = new TiXmlElement("Q");
-	BladePairElement->LinkEndChild(QElement);
-	TiXmlText *QContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.Q));
-	QElement->LinkEndChild(QContent);
-
-	//W<!--  稳态胀差  先取正负涨差的均值  -->
-	TiXmlElement *WElement = new TiXmlElement("W");
-	BladePairElement->LinkEndChild(WElement);
-	TiXmlText *WContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.W));
-	WElement->LinkEndChild(WContent);
-
-	/*N<!--  每个气道的布置方向与推力轴承的关系Nn值，暂时与P31相同
-	当气道1在推力轴承右侧且为反向布置，或气道1在推力轴承左侧且正向布置，定义：N1=0
-	当气道1在推力轴承右侧且为正向布置，或气道1在推力轴承左侧且反向布置，定义：N1=1
-	-->*/
-	TiXmlElement *NElement = new TiXmlElement("N");
-	BladePairElement->LinkEndChild(NElement);
-	TiXmlText *NContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.N));
-	NElement->LinkEndChild(NContent);
-
+	//DDChainDeviation<!--  尺寸链下偏差  -->
+	TiXmlElement *DDChainDeviationElement = new TiXmlElement("DDChainDeviation");
+	BladePairElement->LinkEndChild(DDChainDeviationElement);
+	TiXmlText *DDChainDeviationContent = new TiXmlText(Data->MyFunction->Basic->Double2Char(tmp.DDChainDeviation));
+	DDChainDeviationElement->LinkEndChild(DDChainDeviationContent);
 
 	//Blade//静叶
 	TiXmlElement *BladeElement = new TiXmlElement("Blade");
@@ -2173,6 +2208,11 @@ bool ClassTongliu::LoadXMLData()
 					splitString(str_tmp, first, second, firstValue, secondValue);
 					setting.OriginalPoint = AcGePoint3d(firstValue,secondValue,0);
 				}
+				//LastThreePath 系统末三级路径
+				if (Data->MyFunction->Basic->Char2CString(pElem2nd->Value()).MakeLower() == L"LastThreePath")
+				{
+					setting.LastThreePath = pElem2nd->FirstChild()->Value();
+				}
 			}
 		}
 		//AirCylinder气缸
@@ -2204,7 +2244,14 @@ bool ClassTongliu::LoadXMLData()
 				//LastThreeStages末三级选型及定位数据
 				else if (Data->MyFunction->Basic->Char2CString(pElem2nd->Value()).MakeLower() == L"lastthreestages")
 				{
-					theAir.LastThreeStages = pElem2nd->FirstChild()->Value();
+					//StagesType 末三级选型 MSJ-179-9、MSJ-179-15。MSJ-182-1
+					theAir.StagesType = pElem2nd->FirstChildElement("StagesType")->GetText();
+					//BlockLen;		//图块长度，非空
+					theAir.BlockLen = _wtof(Data->MyFunction->Basic->Char2CString(pElem2nd->FirstChildElement("BlockLen")->GetText()));
+					//InletH 进气侧径向高度 ，非空
+					theAir.InletH = _wtof(Data->MyFunction->Basic->Char2CString(pElem2nd->FirstChildElement("InletH")->GetText()));
+					//OutletH 出汽侧径向高度  ，非空
+					theAir.OutletH = _wtof(Data->MyFunction->Basic->Char2CString(pElem2nd->FirstChildElement("OutletH")->GetText()));
 				}
 				//AirwayCenter  气道中心
 				else if (Data->MyFunction->Basic->Char2CString(pElem2nd->Value()) == L"AirwayCenter")
@@ -2255,13 +2302,47 @@ bool ClassTongliu::LoadXMLData()
 								bladeTmp.μ = 0.0;
 							
 						}
+						//P><!--  正胀差  -->
+						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"P")
+						{
+							bladeTmp.P = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
+						}
+						//Q><!--  负胀差  -->
+						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"Q")
+						{
+							bladeTmp.Q = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
+						}
+						//W><!--  稳态胀差 -->
+						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"W")
+						{
+							bladeTmp.W = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
+							bladeTmp.W = abs(bladeTmp.W);
+						}
 						//p31zf 汽流方向，定义数值=1，汽流从左向右，否则标其他数字，非空
-						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"p31zf")
+						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"T")
 						{
 							bladeTmp.p31zf = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
 							//双分流默认为0   否则标注不对称
 							if(theAir.AirPassage=="双分流")
-								bladeTmp.p31zf =0.0;
+								bladeTmp.p31zf =-1.0;
+						}
+						//N><!--  每个气道的布置方向与推力轴承的关系Nn值
+						//当气道1在推力轴承右侧且为反向布置，或气道1在推力轴承左侧且正向布置，定义：N1=0
+						//当气道1在推力轴承右侧且为正向布置，或气道1在推力轴承左侧且反向布置，定义：N1=1
+						//-->
+						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"S")
+						{
+							bladeTmp.N = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
+							if(bladeTmp.N*bladeTmp.p31zf == 1.0)
+							{
+								bladeTmp.X = bladeTmp.P;
+								bladeTmp.Y = bladeTmp.Q;
+							}
+							else if(bladeTmp.N*bladeTmp.p31zf == -1.0)
+							{
+								bladeTmp.X = bladeTmp.Q;
+								bladeTmp.Y = bladeTmp.P;
+							}
 						}
 						//Broken 折流
 						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"Broken")
@@ -2284,44 +2365,20 @@ bool ClassTongliu::LoadXMLData()
 						{
 							bladeTmp.Hmin = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
 						}
-						//P><!--  正胀差  -->
-						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"P")
+						//DDChainDeviation><!--  尺寸链下偏差 -->
+						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"DDChainDeviation")
 						{
-							bladeTmp.P = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
-							bladeTmp.P = abs(bladeTmp.P);
+							bladeTmp.DDChainDeviation = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
 							//正向间隙 AI
-							bladeTmp.ForwardSpace = Data->MyFunction->Basic->ceilToSignificance(bladeTmp.P+bladeTmp.Margin,0.5);
-						}
-						//Q><!--  负胀差  -->
-						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"Q")
-						{
-							bladeTmp.Q = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
-							bladeTmp.Q = abs(bladeTmp.Q);
+							bladeTmp.ForwardSpace = Data->MyFunction->Basic->round(bladeTmp.X+bladeTmp.Margin-bladeTmp.DDChainDeviation,2);
+							
 							//负向间隙 AJ
-							bladeTmp.NegativeSpace =Data->MyFunction->Basic->ceilToSignificance(bladeTmp.Q+bladeTmp.Margin,0.5);
-						}
-						//W><!--  稳态胀差 -->
-						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"W")
-						{
-							bladeTmp.W = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
-						}
-						//N><!--  每个气道的布置方向与推力轴承的关系Nn值
-						//当气道1在推力轴承右侧且为反向布置，或气道1在推力轴承左侧且正向布置，定义：N1=0
-						//当气道1在推力轴承右侧且为正向布置，或气道1在推力轴承左侧且反向布置，定义：N1=1
-						//-->
-						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()) == L"N")
-						{
-							bladeTmp.N = _wtof(Data->MyFunction->Basic->Char2CString(pElem3rd->FirstChild()->Value()));
-							if(bladeTmp.N == 0)
-							{
-								bladeTmp.X = bladeTmp.P;
-								bladeTmp.Y = bladeTmp.Q;
-							}
-							else if(bladeTmp.N == 1)
-							{
-								bladeTmp.X = bladeTmp.Q;
-								bladeTmp.Y = bladeTmp.P;
-							}
+							if(bladeTmp.Y>0)
+								bladeTmp.NegativeSpace =Data->MyFunction->Basic->round(bladeTmp.Margin-bladeTmp.DDChainDeviation,2);
+							else
+								bladeTmp.NegativeSpace =Data->MyFunction->Basic->round(bladeTmp.Margin-bladeTmp.Y-bladeTmp.DDChainDeviation,2);
+							bladeTmp.X = abs(bladeTmp.X);
+							bladeTmp.Y = abs(bladeTmp.Y);
 						}
 						//Blade叶片数据
 						else if (Data->MyFunction->Basic->Char2CString(pElem3rd->Value()).MakeLower() == L"blade")
@@ -2351,7 +2408,7 @@ bool ClassTongliu::LoadXMLData()
 									bladeTmp.p8Bz = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p8Bz")->GetText()));
 									bladeTmp.p9bz = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p9bz")->GetText()));
 									bladeTmp.p10hz = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p10hz")->GetText()));
-									bladeTmp.p26Dpp = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p26Dpp")->GetText()))+ setting.OriginalPoint.y;
+									bladeTmp.p26Dpp = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p26Dpp")->GetText()))/2.0+ setting.OriginalPoint.y;
 									bladeTmp.p27Lp = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p27Lp")->GetText()));
 									bladeTmp.p11ad = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p11ad")->GetText()));
 									bladeTmp.p12ag = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p12ag")->GetText()));
@@ -2362,9 +2419,9 @@ bool ClassTongliu::LoadXMLData()
 										// 处理第一个 BladePair 节点的情况  第一个p0不需要计算
 										isFirstBladePair_stator = false;
 										//当没有横置静叶时，第一级P0=0.5*汽道宽度+悬臂宽度+0.5*第一级静叶中间体宽（p8Bz-p9bz）
-										theAir.p0Jz_1 = 0.5 * theAir.AirWeight + theAir.CantileverWidth + 0.5*(bladeTmp.p8Bz - bladeTmp.p9bz) ;
+										theAir.p0Jz_1 = theAir.AirAxialDis + setting.OriginalPoint.x;
 										// + 气道轴向距离
-										bladeTmp.p0Jz = theAir.p0Jz_1 + theAir.AirAxialDis + setting.OriginalPoint.x;
+										bladeTmp.p0Jz = theAir.p0Jz_1 +0.5 * theAir.AirWeight + theAir.CantileverWidth + bladeTmp.p8Bz - bladeTmp.p9bz ;
 										
 										//存此行  下一行p0要用
 										ForwardSpace_U = bladeTmp.ForwardSpace;		//上一行 正向间隙 AI
@@ -2377,7 +2434,7 @@ bool ClassTongliu::LoadXMLData()
 											// 处理非第一个 BladePair 节点的情况
 											////p0 =MAX(AI2+AF2+U2+K3-L3,AI2+AF2+X2+H3-I3)
 											double u_num = 0.0;
-											if(bladeTmp.N == 0)
+											if(bladeTmp.N*bladeTmp.p31zf == -1.0)
 												u_num = ForwardSpace_U ;
 											else
 												u_num = NegativeSpace_U ;
@@ -2389,7 +2446,7 @@ bool ClassTongliu::LoadXMLData()
 										}
 										else
 										{
-											bladeTmp.p0Jz = bladeTmp.BrokenDis+theAir.AirAxialDis;
+											bladeTmp.p0Jz = bladeTmp.BrokenDis+theAir.AirAxialDis+setting.OriginalPoint.x;
 										}
 										
 										//存此行  下一行p0要用
@@ -2467,7 +2524,7 @@ bool ClassTongliu::LoadXMLData()
 									bladeTmp.p21Bz = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p21Bz")->GetText()));
 									bladeTmp.p22bz = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p22bz")->GetText()));
 									bladeTmp.p23hz = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p23hz")->GetText()));
-									bladeTmp.p28Dpd = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p28Dpd")->GetText()))+ setting.OriginalPoint.y;
+									bladeTmp.p28Dpd = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p28Dpd")->GetText()))/2.0+ setting.OriginalPoint.y;
 									bladeTmp.p29Ld = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p29Ld")->GetText()));
 									bladeTmp.p24ad = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p24ad")->GetText()));
 									bladeTmp.p25ag = _wtof(Data->MyFunction->Basic->Char2CString(profileElement->FirstChildElement("p25ag")->GetText()));
@@ -2483,7 +2540,7 @@ bool ClassTongliu::LoadXMLData()
 									{
 										//=MAX(AJ2+C2+L2+T2-U2,AJ2+C2+I2+W2-X2)
 										double u_num = 0.0;
-										if(bladeTmp.N == 0)
+										if(bladeTmp.N*bladeTmp.p31zf == -1.0)
 											u_num = bladeTmp.NegativeSpace ;
 										else
 											u_num = bladeTmp.ForwardSpace ;
@@ -3378,9 +3435,9 @@ bool ClassTongliu::LoadXMLDataDispose()
 			}
 
 			//判断叶片对后是否有抽口
-			if(bladePair[ii].IsSuctionPort == 1.0)
+			if(bladePair[ii].IsSuctionPort == 1.0 && ii!=bladePair.size()-1)
 			{
-				double left_dis1 = bladePair[ii].OutletWeight;
+				double left_dis1 = bladePair[ii].InletWeight;
 				double left_dis2 = 0.0;
 				if(aircylinderDataVec[i].isHorizonBlade != 1.0 || ii != 0)
 				{
@@ -3389,7 +3446,7 @@ bool ClassTongliu::LoadXMLDataDispose()
 				
 				left_dis2 =  Data->MyFunction->Basic->ceilToSignificance(left_dis2, 0.5);
 				double left_re_dis = max(left_dis1, left_dis2);
-				double right_re_dis = bladePair[ii].InletWeight;
+				double right_re_dis = bladePair[ii].OutletWeight;
 
 				//a. 首先情况3符合->使用给定Y值（需要修改XML格式，接收Y值）
 				//b. 否则从1或2判断
@@ -3412,10 +3469,11 @@ bool ClassTongliu::LoadXMLDataDispose()
 
 				}
 
-				bladePair[ii].InletWeight = right_re_dis;
-				bladePair[ii].OutletWeight = left_re_dis;
+				bladePair[ii].OutletWeight = right_re_dis;
+				bladePair[ii].InletWeight = left_re_dis;
 				bladePair[ii].MidWeight = mid_re_dis;
-				double tmp1 = left_re_dis + right_re_dis + mid_re_dis - (bladePair[ii+1].p0Jz - bladePair[ii].p0Jz+increment);
+				double tmp2 = left_re_dis + right_re_dis + mid_re_dis;
+				double tmp1 = left_re_dis + right_re_dis + mid_re_dis - (bladePair[ii+1].p0Jz - bladePair[ii].p0Jz- bladePair[ii].p9bz- bladePair[ii+1].p17Bw+ bladePair[ii+1].p18bw +increment);
 				increment =  increment + tmp1;
 				//保护
 				if(increment<0)
@@ -3485,7 +3543,7 @@ int ClassTongliu::createTL()
 	for(int ii = 0;ii<aircylinderDataVec.size();ii++)
 	{
 		//获取末三级数据
-		string last_three_stages = aircylinderDataVec[ii].LastThreeStages;
+		string last_three_stages = aircylinderDataVec[ii].StagesType;
 		//获取叶片数据
 		vector<bladeData> bladePair = aircylinderDataVec[ii].bladePair;
 
@@ -3542,8 +3600,8 @@ int ClassTongliu::createTL()
 			if(i == 0 && aircylinderDataVec[ii].isHorizonBlade == 1.0)
 			{
 				//先画气道
-				l_p = AcGePoint3d(setting.OriginalPoint.x +AirAxialDis - AirWeight/2.0 ,setting.OriginalPoint.y + tmp.p28Dpd + tmp.p29Ld +50.0,0);
-				r_p = AcGePoint3d(setting.OriginalPoint.x +AirAxialDis + AirWeight/2.0 ,setting.OriginalPoint.y + tmp.p28Dpd + tmp.p29Ld +50.0,0);
+				l_p = AcGePoint3d(setting.OriginalPoint.x +AirAxialDis - AirWeight/2.0 , tmp.p28Dpd + tmp.p29Ld +50.0,0);
+				r_p = AcGePoint3d(setting.OriginalPoint.x +AirAxialDis + AirWeight/2.0 ,  tmp.p28Dpd + tmp.p29Ld +50.0,0);
 			}
 			else
 			{
@@ -3657,7 +3715,7 @@ int ClassTongliu::createTL()
 
 					double u_num = 0.0;
 					//静叶用不用的间隙计算余量与读取xml相反
-					if(tmp.N == 0)
+					if(tmp.N*tmp.p31zf == -1.0)
 						u_num = tmp.NegativeSpace ;
 					else
 						u_num = tmp.ForwardSpace ;
@@ -4023,7 +4081,7 @@ int ClassTongliu::createTL()
 				}
 
 				//最后一级叶片调用末三级
-				createLastThreeStages(aircylinderDataVec[ii].LastThreeStages,r_point,tmp.p31zf,AirAxialDis+setting.OriginalPoint.x,isdelete,AircylinderObjects);
+				createLastThreeStages(aircylinderDataVec[ii].StagesType,r_point,tmp.p31zf,AirAxialDis+setting.OriginalPoint.x,isdelete,AircylinderObjects);
 			}
 
 			//若是横置叶片并且是第一级叶片则链接横置静叶片
@@ -4082,7 +4140,7 @@ int ClassTongliu::createTL()
 				}
 				
 				double u_num = 0.0;
-				if(tmp.N == 0)
+				if(tmp.N*tmp.p31zf == -1.0)
 					u_num = tmp.NegativeSpace ;
 				else
 					u_num = tmp.ForwardSpace ;
@@ -4223,13 +4281,13 @@ int ClassTongliu::createTL()
 			if(aircylinderDataVec[ii].AirPassage=="单流"||aircylinderDataVec[ii].AirPassage=="折流")
 			{
 				//镜像
-				if(tmp.p31zf==0)
+				if(tmp.p31zf==-1.0)
 					Data->MyFunction->Arx->CreateImage(AircylinderObjects,AcGePoint3d(AirAxialDis+setting.OriginalPoint.x,0.0,0),AcGePoint3d(AirAxialDis+setting.OriginalPoint.x,1.0,0),1);
 			}
 			else if(aircylinderDataVec[ii].AirPassage=="双分流")
 			{
 				//镜像
-				if(tmp.p31zf==0)
+				if(tmp.p31zf==-1.0)
 					Data->MyFunction->Arx->CreateImage(AircylinderObjects,AcGePoint3d(AirAxialDis+setting.OriginalPoint.x,0.0,0),AcGePoint3d(AirAxialDis+setting.OriginalPoint.x,1.0,0),0);
 			}
 			
@@ -4998,7 +5056,6 @@ int ClassTongliu::createBladeHubGroove(string bladeType, double hubtype, bladeDa
 			//若有抽口则不连线单独勾画
 			if(tmp.IsSuctionPort==1.0)
 			{
-
 				//右侧先计算下一级中间体左基准点
 				AcGePoint3d vertex1   = AcGePoint3d(next_tmp.p0Jz + next_tmp.p4bd -next_tmp.p2BD, next_tmp.p26Dpp + next_tmp.p27Lp/2.0, 0);
 				AcGePoint3d vertex4   = AcGePoint3d(next_tmp.p0Jz + next_tmp.p4bd , next_tmp.p26Dpp + next_tmp.p27Lp/2.0, 0);
@@ -5021,16 +5078,21 @@ int ClassTongliu::createBladeHubGroove(string bladeType, double hubtype, bladeDa
 				if(tmp.CoverDegree<=0.5)
 				{
 					//左侧为直角
-					Data->MyFunction->Arx->CreateLine(r_point, AcGePoint3d(r_point.x+tmp.OutletWeight,r_point.y,0) ,&GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(r_point, AcGePoint3d(r_point.x+tmp.InletWeight,r_point.y,0) ,&GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
-					Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+tmp.OutletWeight,r_point.y,0), AcGePoint3d(r_point.x+tmp.OutletWeight,r_point.y+40.0,0) ,&GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+tmp.InletWeight,r_point.y,0), AcGePoint3d(r_point.x+tmp.InletWeight,r_point.y+40.0,0) ,&GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
 
 					//右侧为圆角
 					AcDbObjectId tmp1,tmp2;
-					Data->MyFunction->Arx->CreateLine(ids_up1,AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y,ids_up1.z) , &tmp1);
-					Data->MyFunction->Arx->CreateLine(AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y,ids_up1.z),AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y+40.0,ids_up1.z) , &tmp2);
-					Data->MyFunction->Arx->CreateFillet(tmp1, ids_up1 , tmp2, AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y+40.0,ids_up1.z), 20.0 , &GeneralObjects);
+					//起点向下取0.5整
+					AcGePoint3d StartPoint_right = AcGePoint3d(ids_up1.x,Data->MyFunction->Basic->floorNumber(ids_up1.y,0),0);
+					Data->MyFunction->Arx->CreateLine(ids_up1,StartPoint_right, &tmp1);
+					AircylinderObjects.append(tmp1);
+
+					Data->MyFunction->Arx->CreateLine(StartPoint_right,AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y,StartPoint_right.z) , &tmp1);
+					Data->MyFunction->Arx->CreateLine(AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y,StartPoint_right.z),AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y+40.0,StartPoint_right.z) , &tmp2);
+					Data->MyFunction->Arx->CreateFillet(tmp1, StartPoint_right , tmp2, AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y+40.0,StartPoint_right.z), 20.0 , &GeneralObjects);
 					AircylinderObjects.append(tmp1);
 					AircylinderObjects.append(tmp2);
 					AircylinderObjects.append(GeneralObjects);
@@ -5038,18 +5100,23 @@ int ClassTongliu::createBladeHubGroove(string bladeType, double hubtype, bladeDa
 				else
 				{
 					//否则都为2*45倒角
-					Data->MyFunction->Arx->CreateLine(r_point, AcGePoint3d(r_point.x+tmp.OutletWeight-2,r_point.y,0) ,&GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(r_point, AcGePoint3d(r_point.x+tmp.InletWeight-2,r_point.y,0) ,&GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
-					Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+tmp.OutletWeight-2,r_point.y,0), AcGePoint3d(r_point.x+tmp.OutletWeight,r_point.y+2,0) ,&GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+tmp.InletWeight-2,r_point.y,0), AcGePoint3d(r_point.x+tmp.InletWeight,r_point.y+2,0) ,&GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
-					Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+tmp.OutletWeight,r_point.y+2,0), AcGePoint3d(r_point.x+tmp.OutletWeight,r_point.y+40.0,0) ,&GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+tmp.InletWeight,r_point.y+2,0), AcGePoint3d(r_point.x+tmp.InletWeight,r_point.y+40.0,0) ,&GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
+					
+					//起点向下取0.5整
+					AcGePoint3d StartPoint_right = AcGePoint3d(ids_up1.x,Data->MyFunction->Basic->floorNumber(ids_up1.y,0),0);
+					Data->MyFunction->Arx->CreateLine(ids_up1,StartPoint_right, &tmp1);
+					AircylinderObjects.append(tmp1);
 
-					Data->MyFunction->Arx->CreateLine(ids_up1,AcGePoint3d(ids_up1.x-tmp.InletWeight+2.0,ids_up1.y,ids_up1.z) , &GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(StartPoint_right,AcGePoint3d(StartPoint_right.x-tmp.OutletWeight+2.0,StartPoint_right.y,StartPoint_right.z) , &GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
-					Data->MyFunction->Arx->CreateLine(AcGePoint3d(ids_up1.x-tmp.InletWeight+2.0,ids_up1.y,ids_up1.z),AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y+2.0,ids_up1.z) , &GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(AcGePoint3d(StartPoint_right.x-tmp.OutletWeight+2.0,StartPoint_right.y,StartPoint_right.z),AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y+2.0,StartPoint_right.z) , &GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
-					Data->MyFunction->Arx->CreateLine(AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y+2.0,ids_up1.z),AcGePoint3d(ids_up1.x-tmp.InletWeight,ids_up1.y+40.0,ids_up1.z) , &GeneralObjects);
+					Data->MyFunction->Arx->CreateLine(AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y+2.0,StartPoint_right.z),AcGePoint3d(StartPoint_right.x-tmp.OutletWeight,StartPoint_right.y+40.0,StartPoint_right.z) , &GeneralObjects);
 					AircylinderObjects.append(GeneralObjects);
 				}
 			}
@@ -5230,21 +5297,53 @@ int ClassTongliu::createBladeHubGroove(string bladeType, double hubtype, bladeDa
 						Data->MyFunction->Arx->DeleteObject(tag_downr_ray_Id1);
 						Data->MyFunction->Arx->DeleteObject(ray_downr_ID1);
 
+						//对比叶根右上顶点与下一级叶片deeppointY值
+						if(Data->MyFunction->Basic->floorNumber(ids_down21.y,0)<deepPoint.y)
+						{
+							AcGePoint3d StartPoint_left = AcGePoint3d(ids_down21.x+0.2,Data->MyFunction->Basic->floorNumber(ids_down21.y,0),0);
+							Data->MyFunction->Arx->CreateLine(r_point,AcGePoint3d(r_point.x+0.2,r_point.y,0), &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+							Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+0.2,r_point.y,0),StartPoint_left, &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
 
-						//求叶片交点
-						AcGePoint3d theP=AcGePoint3d(0,0,0);
-						AcDbObjectId  ray_upl_ID;
-						Data->MyFunction->Arx->CreateLine(ids_down21,angle_down,  100000.0,1, &ray_upl_ID);
-						Data->MyFunction->Arx->CreateLine(deepPoint,AcGePoint3d(deepPoint.x-100000.0,deepPoint.y,deepPoint.z),&GeneralObjects);
-						Data->MyFunction->Arx->GetObjectIntersect(ray_upl_ID,GeneralObjects,&theP);
-						Data->MyFunction->Arx->DeleteObject(ray_upl_ID);
-						Data->MyFunction->Arx->DeleteObject(GeneralObjects);
+							//求叶片交点
+							AcGePoint3d theP=AcGePoint3d(0,0,0);
+							AcDbObjectId  ray_upl_ID;
+							Data->MyFunction->Arx->CreateLine(StartPoint_left,angle_down,  100000.0,1, &ray_upl_ID);
+							Data->MyFunction->Arx->CreateLine(deepPoint,AcGePoint3d(deepPoint.x-100000.0,deepPoint.y,deepPoint.z),&GeneralObjects);
+							Data->MyFunction->Arx->GetObjectIntersect(ray_upl_ID,GeneralObjects,&theP);
+							Data->MyFunction->Arx->DeleteObject(ray_upl_ID);
+							Data->MyFunction->Arx->DeleteObject(GeneralObjects);
 
-						//左基准点
-						Data->MyFunction->Arx->CreateLine(ids_down21,theP, &GeneralObjects);
-						AircylinderObjects.append(GeneralObjects);
-						Data->MyFunction->Arx->CreateLine(theP,deepPoint,  &GeneralObjects);
-						AircylinderObjects.append(GeneralObjects);
+							//左基准点
+							Data->MyFunction->Arx->CreateLine(StartPoint_left,theP, &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+							Data->MyFunction->Arx->CreateLine(theP,deepPoint,  &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+						}
+						else if(Data->MyFunction->Basic->floorNumber(ids_down21.y,0)==deepPoint.y)
+						{
+							AcGePoint3d StartPoint_left = AcGePoint3d(ids_down21.x+0.2,Data->MyFunction->Basic->floorNumber(ids_down21.y,0),0);
+							Data->MyFunction->Arx->CreateLine(r_point,AcGePoint3d(r_point.x+0.2,r_point.y,0), &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+							Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+0.2,r_point.y,0),StartPoint_left, &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+							Data->MyFunction->Arx->CreateLine(StartPoint_left,deepPoint,  &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+						}
+						else
+						{
+							AcGePoint3d StartPoint_left = AcGePoint3d(ids_down21.x+0.2,Data->MyFunction->Basic->floorNumber(ids_down21.y,0),0);
+							Data->MyFunction->Arx->CreateLine(r_point,AcGePoint3d(r_point.x+0.2,r_point.y,0), &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+							Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+0.2,r_point.y,0),AcGePoint3d(r_point.x+0.2,deepPoint.y,0), &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+							Data->MyFunction->Arx->CreateLine(AcGePoint3d(r_point.x+0.2,deepPoint.y,0),deepPoint,  &GeneralObjects);
+							AircylinderObjects.append(GeneralObjects);
+						}
+
+
+						
 
 					}
 					//若下级折流则不连线
@@ -6147,7 +6246,7 @@ int ClassTongliu::createLastThreeStages( string TypeName, AcGePoint3d originP,do
 		Data->MyFunction->Arx->CreateLinearDim(p1,p2,p3,90,"307",Image,AxisNum,isDelete);
 #pragma endregion
 	}
-	else if(TypeName == "MSJ-182")
+	else if(TypeName == "MSJ-182-1")
 	{
 #pragma region
 		p1 = AcGePoint3d(originP.x+24.5-3.05,originP.y-3.75-3.96,0);

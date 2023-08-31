@@ -17,6 +17,7 @@ struct bladeData
 	double P;					//正胀差
 	double Q;					//负胀差
 	double W;					//稳态胀差 
+	double DDChainDeviation;	//尺寸链下偏差
 	double N;					//每个气道的布置方向与推力轴承的关系Nn值，暂时与P31相同
 								//当气道1在推力轴承右侧且为反向布置，或气道1在推力轴承左侧且正向布置，定义：N1=0
 								//当气道1在推力轴承右侧且为正向布置，或气道1在推力轴承左侧且反向布置，定义：N1=1
@@ -309,12 +310,19 @@ struct bladeData
 struct aircylinderData
 {
 	string AirPassage;			//气道类型
-	string LastThreeStages;		//末三级选型
 	double p0Jz_1;				//原点到第1级静叶中心线的距离若横置叶片则为第一级动叶中心线
 	double isHorizonBlade;		//是否含有横置叶片 1是0否
 	double AirAxialDis;			//气道中心线轴向距离
 	double AirWeight;			//汽道中心宽度
 	double CantileverWidth;		//悬臂宽度
+
+	///////////////////////////////////////////////////////末三级部分///////////////////////////////////////////////////////
+#pragma region
+	string StagesType;      //末三级选型 MSJ-179-9、MSJ-179-15。MSJ-182-1
+	double BlockLen;		//图块长度，非空
+	double InletH;			//进气侧径向高度 ，非空
+	double OutletH;			//出汽侧径向高度  ，非空
+#pragma endregion
 
 	vector<bladeData> bladePair;//叶片对vec
 };
@@ -323,6 +331,7 @@ struct Setting
 {
 	CString ResPath;				//资源路径--块
 	AcGePoint3d OriginalPoint;		//通流图原点
+	CString LastThreePath;			//末三级路径--块
 };
 
 
